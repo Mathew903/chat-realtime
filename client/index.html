@@ -20,16 +20,39 @@
     </section>
     <script type="module">
       import { io } from "https://cdn.socket.io/4.7.2/socket.io.esm.min.js"
-      const socket = io()
+      
+      const getUser = async () => {
+        const user = localStorage.getItem("user")
+        if(user) return user
+
+        const res = await fetch("https://random-data-api.com/api/users/random_user")
+        const {username: ramdomUser} = await res.json()
+
+        localStorage.setItem("user", ramdomUser)
+        return ramdomUser
+      }
+
+      const socket = io({
+        auth: {
+          user: await getUser(),
+          serverOffset: 0
+        }
+      })
 
       const form = document.getElementById("form")
       const input = document.getElementById("input")
       const messages = document.getElementById("messages")
 
-      socket.on("chat message", (msg) => {
-        console.log(msg)
-        const item = `<li>${msg}</li>`
+      socket.on("chat message", (msg, serverOffset, user) => {
+        const item = `<li>
+          <p>${msg}</p>
+          <small>${user}</small>
+        </li>`
         messages.insertAdjacentHTML("beforeend", item)
+        socket.auth.serverOffset = serverOffset
+
+        //scroll to bottom of messages
+        messages.scrollTop = messages.scrollHeight
       })
 
       form.addEventListener("submit", (e) => {
@@ -110,6 +133,10 @@
 
       #messages {
         list-style: none;
+        overflow-y: scroll;
+        height: 100%;
+        scroll-behavior: smooth;
+        padding-bottom: 48px;
       }
 
       #messages > li {
